@@ -1,7 +1,7 @@
 # rcscan
-Minimalistic parser for rc-files
+Minimalistic parser for .rc files
 
-== Overview
+## Overview
 
 Package provides minimalistic access to parameters stored in old-fashined .rc-like configuration files (similar to .toml, but not)
 
