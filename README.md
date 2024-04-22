@@ -3,9 +3,9 @@ Minimalistic parser for .rc files
 
 ## Overview
 
-Package provides minimalistic access to parameters stored in old-fashined .rc-like configuration files (similar to .toml, but not)
+Package provides minimalistic access to parameters stored in old-fashined .rc-like configuration files.
 
-Example for getmailrc cnfiguration file:
+Example for getmail.rc cnfiguration file:
 
 	[retriever]
 	type = SimplePOP3SSLRetriever
@@ -24,13 +24,17 @@ Example for getmailrc cnfiguration file:
 With rscan you can easily access any parameter inside the configuration.
 Let's pull "path" parameter from "destination" section:
 
-	rc, err := rcscan.New("./path-to/getmailrc")
+	rc, err := rcscan.New("./path-to/getmail.rc")
 	if err != nil {
 		fmt.Println(err)
 	} else {
 		path, err := rc.GetParam("destination", "path")
 		if err != nil {
-			log.Debug("problem")
+			fmt.Println(err)
 		}
 		fmt.Println(path)
 	}
+
+Output:
+
+    ./getmail/maildir/
