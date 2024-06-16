@@ -1,37 +1,3 @@
-/*
-Package provides minimalistic access to parameters stored in .rc-like configuration files.
-
-Example for getmailrc cnfiguration file:
-
-	[retriever]
-	type = SimplePOP3SSLRetriever
-	server = pop.domain.example
-	username = user@domain.example
-	password = P@$$w0rd
-
-	[destination]
-	type = Maildir
-	path = ./getmail/maildir/
-
-	[options]
-	delete = false
-	message_log = ./getmail/log
-
-With rscan you can easily access any parameter inside the configuration.
-Let's pull "path" parameter from "destination" section:
-
-	rc, err := rcscan.New("./path-to/getmailrc")
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		path, err := rc.GetParam("destination", "path")
-		if err != nil {
-			log.Debug("problem")
-		}
-		fmt.Println(path)
-	}
-	
-*/
 package rcscan
 
 import (
@@ -41,79 +7,81 @@ import (
 	"strings"
 )
 
-type RCScanner struct {
-	File string
+type RCfile struct {
+	name   string
+	values map[string]map[string]string
 }
 
-// Creates new scanner for rcfile specified. Returns error if target rcfile doesn't exist.
-func New(file string) (*RCScanner, error) {
-	var r RCScanner
-	if _, err := os.Stat(file); err == nil {
-		r.File = file
-		return &r, nil
-	} else {
-		return nil, errors.New("file doesn't exist: " + file)
-	}
+const (
+	ERR_PREFIX      = "rcscan error, "
+	DEFAULT_SECTION = "[__default__]"
+)
+
+func e(msg string) error {
+	return errors.New(ERR_PREFIX + msg)
 }
 
-// Returns parameter's value as string from the section specified
-// Example 1: GetParam("[section]", "parameterA")
-// Example 2: GetParam("section", "parameterB")
-func (r *RCScanner) GetParam(section string, param string) (string, error) {
+// Creates new rcfile object for filename specified
+func New(filename string) (*RCfile, error) {
 
-	logPrefix := "rcscan.GetParam(): "
-
-	if (len(section) == 0) || (len(param) == 0) {
-		return "", errors.New(logPrefix + "args must not be empty")
-	}
-
-	file, err := os.Open(r.File)
+	file, err := os.Open(filename)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+
+	rc := &RCfile{name: filename, values: make(map[string]map[string]string)}
+	section := DEFAULT_SECTION
+	rc.values[DEFAULT_SECTION] = make(map[string]string)
 
 	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+
+		line := strings.TrimSpace(scanner.Text())
+		if len(line) == 0 || line[0] == ';' || line[0] == '#' || line[0] == '/' {
+			continue
+		}
+
+		if line[0] == '[' {
+			if line[len(line)-1] == ']' {
+				section = line
+				if _, ok := rc.values[line]; !ok {
+					rc.values[line] = make(map[string]string)
+				}
+				continue
+			} else {
+				return nil, e("bad syntax, no ']' closure found at line: " + line)
+			}
+		}
+
+		param := strings.SplitAfterN(line, "=", 2)
+		if len(param) != 2 {
+			return nil, e("bad syntax, no '=' found at line: " + line)
+		}
+
+		param[0] = strings.TrimSpace(strings.Trim(param[0], "="))
+		param[1] = strings.TrimSpace(param[1])
+
+		rc.values[section][param[0]] = param[1]
+	}
+
+	return rc, nil
+}
+
+// Returns parameter's value from the section specified. Section name can be specified either in '[]' or without.
+func (r *RCfile) Get(section string, param string) (string, error) {
+
+	if section == "" {
+		section = DEFAULT_SECTION
+	}
 
 	if section[0] != '[' {
 		section = "[" + section + "]"
 	}
 
-	inside := false
-	value := ""
-
-	for scanner.Scan() {
-		str := scanner.Text()
-		if str == section {
-			inside = true
-			continue
-		}
-		if inside {
-			if strings.HasPrefix(str, param) {
-				// Clean up value
-				value = strings.TrimPrefix(str, param)
-				value = strings.TrimSpace(value)
-				value = strings.TrimPrefix(value, "=")
-				value = strings.TrimSpace(value)
-				return value, nil
-			}
-			if isSection(str) {
-				break
-			}
-		}
-
-	}
-	if err := scanner.Err(); err != nil {
-		return "", err
+	if value, ok := r.values[section][param]; ok {
+		return value, nil
 	}
 
-	return "", errors.New(logPrefix + param + " - param not found")
-}
-
-func isSection(str string) bool {
-	if len(str) > 0 {
-		if str[0] == '[' {
-			return true
-		}
-	}
-	return false
+	return "", e("section or parameter not defined")
 }

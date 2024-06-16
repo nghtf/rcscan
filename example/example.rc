@@ -1,0 +1,14 @@
+# .ini or .rc file example with comment blocks
+
+; empty section parameter
+paramA = my value
+
+; new section with parameters
+[Section 1]
+paramA=2023
+paramB=2024
+
+[Section 2]
+paramC = "some string value"
+paramD = some string value
+paramE = #$%^&*()_+=*/;
