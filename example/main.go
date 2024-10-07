@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"rcscan"
+
+	"github.com/nghtf/rcscan"
 )
 
 func main() {
