@@ -1,4 +1,4 @@
-package rcscan
+package github.com/nghtf/rcscan
 
 import (
 	"bufio"
